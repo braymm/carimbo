@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gerador de Carimbo - Reparo</title>
+  <style>
+    body {
+      background: #E3C6E3;
+      font-family: sans-serif;
+      padding: 10px;
+    }
+    .container {
+      max-width: 400px;
+      margin: auto;
+      background: #fff3;
+      border-radius: 10px;
+      padding: 15px;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+      margin-bottom: 3px;
+    }
+    textarea {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+      box-sizing: border-box;
+      resize: none;
+      overflow: hidden;
+      min-height: 40px;
+      font-family: sans-serif;
+    }
+    button {
+      background: #ffe900;
+      color: #222;
+      font-weight: bold;
+      border-radius: 8px;
+      padding: 12px 0;
+      width: 100%;
+      border: none;
+      margin-top: 12px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .output {
+      margin-top: 18px;
+      background: #e0f7fa;
+      padding: 10px;
+      border-radius: 7px;
+      white-space: pre-line;
+      font-family: monospace;
+      min-height: 100px;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🛠️ GERADOR DE CARIMBO - REPARO</h2>
+    <label for="reclamacao">Reclamação do cliente:</label>
+    <textarea id="reclamacao" placeholder="Digite aqui..."></textarea>
+
+    <label for="corrigir">O que foi feito para corrigir:</label>
+    <textarea id="corrigir" placeholder="Digite aqui..."></textarea>
+
+    <label for="orientacao">Orientação ao cliente:</label>
+    <textarea id="orientacao" placeholder="Digite aqui..."></textarea>
+
+    <label for="mapaCalor">Código do Mapa de Calor:</label>
+    <textarea id="mapaCalor" placeholder="Digite aqui..."></textarea>
+
+    <label for="speedTest">ID ou link do Speed Test:</label>
+    <textarea id="speedTest" placeholder="Cole o link completo ou só o ID aqui"></textarea>
+
+    <label for="powerMeter">Potência Fibra PowerMeter (número, obrigatório):</label>
+    <textarea id="powerMeter" placeholder="Digite aqui..."></textarea>
+
+    <label for="observacoes">OBSERVAÇÕES:</label>
+    <textarea id="observacoes" placeholder="Digite aqui..."></textarea>
+
+    <button id="gerar">Carimbo Zeus</button>
+    <div class="output" id="output"></div>
+    <button id="copy" style="display:none;">Copiar Relatório</button>
+  </div>
+
+  <script>
+    const campos = [
+      'reclamacao',
+      'corrigir',
+      'orientacao',
+      'mapaCalor',
+      'speedTest',
+      'powerMeter',
+      'observacoes'
+    ].map(id => document.getElementById(id));
+
+    const gerar = document.getElementById('gerar');
+    const output = document.getElementById('output');
+    const copy = document.getElementById('copy');
+
+    window.onload = function () {
+      const dados = JSON.parse(localStorage.getItem('carimbo_reparo')) || {};
+      campos.forEach(campo => {
+        campo.value = dados[campo.id] || '';
+        autoResize(campo);
+        campo.addEventListener('input', () => {
+          autoResize(campo);
+        });
+      });
+    };
+
+    function salvarLocal() {
+      const obj = {};
+      campos.forEach(campo => {
+        obj[campo.id] = campo.value;
+      });
+      localStorage.setItem('carimbo_reparo', JSON.stringify(obj));
+    }
+
+    function autoResize(element) {
+      element.style.height = 'auto';
+      element.style.height = element.scrollHeight + 'px';
+    }
+
+    // Extrae solo id de Speedtest
+    function extrairIdSpeedtest(texto) {
+      const regex = /result\/(\d+)/;
+      const match = texto.match(regex);
+      if (match) return match[1];
+      return texto;
+    }
+
+    // Valida texto obligatorio para todos menos powerMeter
+    function validarCampoObrigatorio(campo) {
+      const valor = campo.value.trim();
+      if (valor === '') {
+        alert(`Por favor complete o campo: ${campo.previousElementSibling.textContent}`);
+        campo.focus();
+        return false;
+      }
+      return true;
+    }
+
+    // Validacion estricta powerMeter
+    function validarPowerMeter(texto) {
+      let valor = texto.trim();
+      if (valor === '') {
+        alert('O campo Potência Fibra PowerMeter é obrigatório e deve conter número válido');
+        document.getElementById('powerMeter').focus();
+        return null;
+      }
+      valor = valor.replace(',', '.');
+      if (isNaN(valor)) {
+        alert('O campo Potência Fibra PowerMeter deve conter apenas números válidos');
+        document.getElementById('powerMeter').focus();
+        return null;
+      }
+      let num = Number(valor);
+      if (num > 0) num = -num;
+      return num.toString();
+    }
+
+    gerar.onclick = function () {
+      // Validar obligatorios excepto speedTest (que puede ser vacío según antes)
+      for (let campo of campos) {
+        if (campo.id === 'speedTest') continue;
+        if (!validarCampoObrigatorio(campo)) return;
+      }
+
+      // Validar powerMeter
+      const powerMeterVal = validarPowerMeter(document.getElementById('powerMeter').value);
+      if (powerMeterVal === null) return;
+
+      salvarLocal();
+
+      const agora = new Date();
+      const idSpeedTest = extrairIdSpeedtest(document.getElementById('speedTest').value) || 'N/A';
+
+      const texto = `RELATÓRIO DE REPARO
+
+;DATA HORA: ${agora.toLocaleString()};
+Reclamação do cliente: ${document.getElementById('reclamacao').value};
+O que foi feito para corrigir: ${document.getElementById('corrigir').value};
+Orientação ao cliente: ${document.getElementById('orientacao').value};
+Código do Mapa de Calor: ${document.getElementById('mapaCalor').value};
+ID do Speed Test: ${idSpeedTest};
+Potência Fibra PowerMeter: ${powerMeterVal};
+OBSERVAÇÕES: ${document.getElementById('observacoes').value};
+`;
+      output.textContent = texto;
+      copy.style.display = 'block';
+    };
+
+    copy.onclick = function () {
+      navigator.clipboard.writeText(output.textContent).then(() => {
+        if (window.Telegram?.WebApp) window.Telegram.WebApp.showAlert('Relatório copiado!');
+        else alert('Relatório copiado!');
+      });
+    };
+  </script>
+</body>
+</html>
+

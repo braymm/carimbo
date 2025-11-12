@@ -14,13 +14,19 @@
       margin: auto;
       background: #fff3;
       border-radius: 10px;
-      padding: 15px;
+      padding: 15px 15px 30px 15px;
+      position: relative;
     }
     label {
       font-weight: bold;
       display: block;
       margin-top: 10px;
       margin-bottom: 3px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
     }
     textarea {
       width: 100%;
@@ -46,6 +52,19 @@
       cursor: pointer;
       font-size: 1rem;
     }
+    .small-btn {
+      background: #bada55;
+      color: #222;
+      font-weight: bold;
+      border-radius: 7px;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 0.96rem;
+      width: auto;
+      margin-top: 0;
+      margin-bottom: 0;
+    }
     .output {
       margin-top: 18px;
       background: #e0f7fa;
@@ -56,6 +75,26 @@
       min-height: 100px;
       overflow-wrap: break-word;
       word-break: break-word;
+    }
+    .actions-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+      margin-bottom: 8px;
+    }
+    .marca {
+      position: absolute;
+      bottom: 4px;
+      left: 0;
+      right: 0;
+      width: 100%;
+      text-align: center;
+      font-size: 0.72em;
+      color: #888;
+      opacity: 0.6;
+      font-family: monospace;
+      pointer-events: none;
+      user-select: none;
     }
   </style>
 </head>
@@ -71,10 +110,16 @@
     <label for="orientacao">Orientação ao cliente:</label>
     <textarea id="orientacao" placeholder="Digite aqui..."></textarea>
 
-    <label for="mapaCalor">Código do Mapa de Calor:</label>
+    <div class="row">
+      <label for="mapaCalor" style="flex: 1 0 60%;">Código do Mapa de Calor:</label>
+      <button type="button" class="small-btn" id="pasteMapaCalor">Pegar portapapeles</button>
+    </div>
     <textarea id="mapaCalor" placeholder="Digite aqui..."></textarea>
 
-    <label for="speedTest">ID ou link do Speed Test:</label>
+    <div class="row">
+      <label for="speedTest" style="flex: 1 0 60%;">ID ou link do Speed Test:</label>
+      <button type="button" class="small-btn" id="pasteSpeedTest">Pegar portapapeles</button>
+    </div>
     <textarea id="speedTest" placeholder="Cole o link completo ou só o ID aqui"></textarea>
 
     <label for="powerMeter">Potência Fibra PowerMeter (número, obrigatório):</label>
@@ -83,9 +128,13 @@
     <label for="observacoes">OBSERVAÇÕES:</label>
     <textarea id="observacoes" placeholder="Digite aqui..."></textarea>
 
-    <button id="gerar">Carimbo Zeus</button>
+    <div class="actions-row">
+      <button id="gerar">Carimbo Zeus</button>
+      <button id="borrar">Borrar todo</button>
+    </div>
     <div class="output" id="output"></div>
     <button id="copy" style="display:none;">Copiar Relatório</button>
+    <div class="marca">modified by Bryan Silva</div>
   </div>
 
   <script>
@@ -100,6 +149,7 @@
     ].map(id => document.getElementById(id));
 
     const gerar = document.getElementById('gerar');
+    const borrar = document.getElementById('borrar');
     const output = document.getElementById('output');
     const copy = document.getElementById('copy');
 
@@ -127,16 +177,22 @@
       element.style.height = element.scrollHeight + 'px';
     }
 
-    // Extrae solo id de Speedtest
+    // Extrae solo id numérico (7-15 dígitos) desde cualquier texto de SpeedTest
     function extrairIdSpeedtest(texto) {
-      const regex = /result\/(\d+)/;
+      const regex = /(\d{7,15})/;
       const match = texto.match(regex);
       if (match) return match[1];
-      return texto;
+      return "N/A";
     }
 
-    // Valida texto obligatorio para todos menos powerMeter
+    // Devuelve "N/A" si vacío o solo espacios
+    function valorOuNA(texto) {
+      return texto.trim() === "" ? "N/A" : texto.trim();
+    }
+
     function validarCampoObrigatorio(campo) {
+      // Observacoes y orientacao permiten estar vacíos (se llenan después como N/A)
+      if (campo.id === "observacoes" || campo.id === "orientacao") return true;
       const valor = campo.value.trim();
       if (valor === '') {
         alert(`Por favor complete o campo: ${campo.previousElementSibling.textContent}`);
@@ -146,7 +202,6 @@
       return true;
     }
 
-    // Validacion estricta powerMeter
     function validarPowerMeter(texto) {
       let valor = texto.trim();
       if (valor === '') {
@@ -166,31 +221,39 @@
     }
 
     gerar.onclick = function () {
-      // Validar obligatorios excepto speedTest (que puede ser vacío según antes)
+      // Validar todos obligatorios excepto speedTest, observacoes y orientacao
       for (let campo of campos) {
-        if (campo.id === 'speedTest') continue;
+        if (campo.id === 'speedTest' || campo.id === 'observacoes' || campo.id === 'orientacao') continue;
         if (!validarCampoObrigatorio(campo)) return;
       }
-
       // Validar powerMeter
       const powerMeterVal = validarPowerMeter(document.getElementById('powerMeter').value);
       if (powerMeterVal === null) return;
 
+      // Si observaciones u orientacao están vacíos, asignar "N/A"
+      if (document.getElementById('observacoes').value.trim() === "") {
+        document.getElementById('observacoes').value = "N/A";
+        autoResize(document.getElementById('observacoes'));
+      }
+      if (document.getElementById('orientacao').value.trim() === "") {
+        document.getElementById('orientacao').value = "N/A";
+        autoResize(document.getElementById('orientacao'));
+      }
+
       salvarLocal();
 
       const agora = new Date();
-      const idSpeedTest = extrairIdSpeedtest(document.getElementById('speedTest').value) || 'N/A';
-
+      const idSpeedTest = extrairIdSpeedtest(document.getElementById('speedTest').value);
       const texto = `RELATÓRIO DE REPARO
 
 ;DATA HORA: ${agora.toLocaleString()};
-Reclamação do cliente: ${document.getElementById('reclamacao').value};
-O que foi feito para corrigir: ${document.getElementById('corrigir').value};
-Orientação ao cliente: ${document.getElementById('orientacao').value};
-Código do Mapa de Calor: ${document.getElementById('mapaCalor').value};
+Reclamação do cliente: ${valorOuNA(document.getElementById('reclamacao').value)};
+O que foi feito para corrigir: ${valorOuNA(document.getElementById('corrigir').value)};
+Orientação ao cliente: ${valorOuNA(document.getElementById('orientacao').value)};
+Código do Mapa de Calor: ${valorOuNA(document.getElementById('mapaCalor').value)};
 ID do Speed Test: ${idSpeedTest};
 Potência Fibra PowerMeter: ${powerMeterVal};
-OBSERVAÇÕES: ${document.getElementById('observacoes').value};
+OBSERVAÇÕES: ${valorOuNA(document.getElementById('observacoes').value)};
 `;
       output.textContent = texto;
       copy.style.display = 'block';
@@ -201,6 +264,39 @@ OBSERVAÇÕES: ${document.getElementById('observacoes').value};
         if (window.Telegram?.WebApp) window.Telegram.WebApp.showAlert('Relatório copiado!');
         else alert('Relatório copiado!');
       });
+    };
+
+    // Borrar todos los campos y storage
+    borrar.onclick = function () {
+      campos.forEach(campo => {
+        campo.value = "";
+        autoResize(campo);
+      });
+      localStorage.removeItem('carimbo_reparo');
+      output.textContent = "";
+      copy.style.display = 'none';
+    };
+
+    // Pegar portapapeles en Speed Test
+    document.getElementById('pasteSpeedTest').onclick = async function() {
+      try {
+        const texto = await navigator.clipboard.readText();
+        document.getElementById('speedTest').value = texto.trim();
+        autoResize(document.getElementById('speedTest'));
+      } catch (e) {
+        alert('No se pudo leer el portapapeles: ' + e.message);
+      }
+    };
+
+    // Pegar portapapeles en Mapa de Calor
+    document.getElementById('pasteMapaCalor').onclick = async function() {
+      try {
+        const texto = await navigator.clipboard.readText();
+        document.getElementById('mapaCalor').value = texto.trim();
+        autoResize(document.getElementById('mapaCalor'));
+      } catch (e) {
+        alert('No se pudo leer el portapapeles: ' + e.message);
+      }
     };
   </script>
 </body>

@@ -24,11 +24,6 @@
       margin-top: 10px;
       margin-bottom: 3px;
     }
-    .row {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
     textarea {
       width: 100%;
       padding: 8px;
@@ -40,6 +35,7 @@
       overflow: hidden;
       min-height: 40px;
       font-family: sans-serif;
+      margin-bottom: 10px;
     }
     button {
       background: #ffe900;
@@ -53,18 +49,11 @@
       cursor: pointer;
       font-size: 1rem;
     }
-    .small-btn {
-      background: #bada55;
-      color: #222;
-      font-weight: bold;
-      border-radius: 7px;
-      border: none;
-      padding: 8px 12px;
-      cursor: pointer;
-      font-size: 0.96rem;
-      width: auto;
-      margin-top: 0;
-      margin-bottom: 0;
+    .actions-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+      margin-bottom: 8px;
     }
     .output {
       margin-top: 18px;
@@ -76,12 +65,6 @@
       min-height: 100px;
       overflow-wrap: break-word;
       word-break: break-word;
-    }
-    .actions-row {
-      display: flex;
-      gap: 12px;
-      margin-top: 8px;
-      margin-bottom: 8px;
     }
     .marca {
       position: absolute;
@@ -111,16 +94,10 @@
     <label for="orientacao">Orientação ao cliente:</label>
     <textarea id="orientacao" placeholder="Digite aqui..."></textarea>
 
-    <div class="row">
-      <label for="mapaCalor" style="flex: 1 0 60%;">Código do Mapa de Calor:</label>
-      <button type="button" class="small-btn" id="pasteMapaCalor">Pegar portapapeles</button>
-    </div>
+    <label for="mapaCalor">Código do Mapa de Calor:</label>
     <textarea id="mapaCalor" placeholder="Digite aqui..."></textarea>
 
-    <div class="row">
-      <label for="speedTest" style="flex: 1 0 60%;">ID ou link do Speed Test:</label>
-      <button type="button" class="small-btn" id="pasteSpeedTest">Pegar portapapeles</button>
-    </div>
+    <label for="speedTest">ID ou link do Speed Test:</label>
     <textarea id="speedTest" placeholder="Cole o link completo ou só o ID aqui"></textarea>
 
     <label for="powerMeter">Potência Fibra PowerMeter (número, obrigatório):</label>
@@ -267,7 +244,6 @@ OBSERVAÇÕES: ${valorOuNA(document.getElementById('observacoes').value)};
       });
     };
 
-    // Borrar todos los campos y storage
     borrar.onclick = function () {
       campos.forEach(campo => {
         campo.value = "";
@@ -276,28 +252,6 @@ OBSERVAÇÕES: ${valorOuNA(document.getElementById('observacoes').value)};
       localStorage.removeItem('carimbo_reparo');
       output.textContent = "";
       copy.style.display = 'none';
-    };
-
-    // Pegar portapapeles en Speed Test
-    document.getElementById('pasteSpeedTest').onclick = async function() {
-      try {
-        const texto = await navigator.clipboard.readText();
-        document.getElementById('speedTest').value = texto.trim();
-        autoResize(document.getElementById('speedTest'));
-      } catch (e) {
-        alert('No se pudo leer el portapapeles: ' + e.message);
-      }
-    };
-
-    // Pegar portapapeles en Mapa de Calor
-    document.getElementById('pasteMapaCalor').onclick = async function() {
-      try {
-        const texto = await navigator.clipboard.readText();
-        document.getElementById('mapaCalor').value = texto.trim();
-        autoResize(document.getElementById('mapaCalor'));
-      } catch (e) {
-        alert('No se pudo leer el portapapeles: ' + e.message);
-      }
     };
   </script>
 </body>

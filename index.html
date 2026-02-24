@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gerador de Carimbo - Reparo</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      background: #E3C6E3;
+      font-family: sans-serif;
+      padding: 10px;
+    }
+    .container {
+      max-width: 400px;
+      margin: auto;
+      background: #fff3;
+      border-radius: 10px;
+      padding: 15px 15px 30px 15px;
+      position: relative;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+      margin-bottom: 3px;
+    }
+    textarea {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+      box-sizing: border-box;
+      resize: none;
+      overflow: hidden;
+      min-height: 40px;
+      font-family: sans-serif;
+      margin-bottom: 10px;
+    }
+    button {
+      background: #ffe900;
+      color: #222;
+      font-weight: bold;
+      border-radius: 8px;
+      padding: 12px 0;
+      width: 100%;
+      border: none;
+      margin-top: 12px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .actions-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+      margin-bottom: 8px;
+    }
+    .output {
+      margin-top: 18px;
+      background: #e0f7fa;
+      padding: 10px;
+      border-radius: 7px;
+      white-space: pre-line;
+      font-family: monospace;
+      min-height: 100px;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+    .marca {
+      position: absolute;
+      bottom: 4px;
+      left: 0;
+      right: 0;
+      width: 100%;
+      text-align: center;
+      font-size: 0.72em;
+      color: #888;
+      opacity: 0.6;
+      font-family: monospace;
+      pointer-events: none;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🛠️ GERADOR DE CARIMBO - REPARO</h2>
+
+    <label for="causa">O que causou o defeito:</label>
+    <textarea id="causa" placeholder="Digite aqui..."></textarea>
+
+    <label for="corrigir">O que foi feito para corrigir:</label>
+    <textarea id="corrigir" placeholder="Digite aqui..."></textarea>
+
+    <label for="orientacao">Orientação ao cliente:</label>
+    <textarea id="orientacao" placeholder="Digite aqui..."></textarea>
+
+    <label for="mapaCalor">Código do Mapa de Calor:</label>
+    <textarea id="mapaCalor" placeholder="Digite aqui..."></textarea>
+
+    <label for="speedTest">ID ou link do Speed Test:</label>
+    <textarea id="speedTest" placeholder="Cole o link completo ou só o ID aqui"></textarea>
+
+    <label for="powerMeter">Potência Fibra PowerMeter (número, obrigatório):</label>
+    <textarea id="powerMeter" placeholder="Digite aqui..."></textarea>
+
+    <label for="observacoes">OBSERVAÇÕES:</label>
+    <textarea id="observacoes" placeholder="Digite aqui..."></textarea>
+
+    <div class="actions-row">
+      <button id="gerar">Carimbo Zeus</button>
+      <button id="borrar">Borrar todo</button>
+    </div>
+    <div class="output" id="output"></div>
+    <button id="copy" style="display:none;">Copiar Relatório</button>
+    <div class="marca">modified by Bryan Silva</div>
+  </div>
+
+  <script>
+    // Atualizado para incluir 'causa' no lugar de 'reclamacao'
+    const campos = [
+      'causa',
+      'corrigir',
+      'orientacao',
+      'mapaCalor',
+      'speedTest',
+      'powerMeter',
+      'observacoes'
+    ].map(id => document.getElementById(id));
+
+    const gerar = document.getElementById('gerar');
+    const borrar = document.getElementById('borrar');
+    const output = document.getElementById('output');
+    const copy = document.getElementById('copy');
+
+    window.onload = function () {
+      const dados = JSON.parse(localStorage.getItem('carimbo_reparo')) || {};
+      campos.forEach(campo => {
+        campo.value = dados[campo.id] || '';
+        autoResize(campo);
+        campo.addEventListener('input', () => {
+          autoResize(campo);
+        });
+      });
+    };
+
+    function salvarLocal() {
+      const obj = {};
+      campos.forEach(campo => {
+        obj[campo.id] = campo.value;
+      });
+      localStorage.setItem('carimbo_reparo', JSON.stringify(obj));
+    }
+
+    function autoResize(element) {
+      element.style.height = 'auto';
+      element.style.height = element.scrollHeight + 'px';
+    }
+
+    function extrairIdSpeedtest(texto) {
+      const regex = /(\d{7,15})/;
+      const match = texto.match(regex);
+      if (match) return match[1];
+      return "N/A";
+    }
+
+    function valorOuNA(texto) {
+      return texto.trim() === "" ? "N/A" : texto.trim();
+    }
+
+    function validarCampoObrigatorio(campo) {
+      if (campo.id === "observacoes" || campo.id === "orientacao") return true;
+      const valor = campo.value.trim();
+      if (valor === '') {
+        alert(`Por favor complete o campo: ${campo.previousElementSibling.textContent}`);
+        campo.focus();
+        return false;
+      }
+      return true;
+    }
+
+    function validarPowerMeter(texto) {
+      let valor = texto.trim();
+      if (valor === '') {
+        alert('O campo Potência Fibra PowerMeter é obrigatório e deve conter número válido');
+        document.getElementById('powerMeter').focus();
+        return null;
+      }
+      valor = valor.replace(',', '.');
+      if (isNaN(valor)) {
+        alert('O campo Potência Fibra PowerMeter deve conter apenas números válidos');
+        document.getElementById('powerMeter').focus();
+        return null;
+      }
+      let num = Number(valor);
+      if (num > 0) num = -num;
+      return num.toString();
+    }
+
+    gerar.onclick = function () {
+      for (let campo of campos) {
+        if (campo.id === 'speedTest' || campo.id === 'observacoes' || campo.id === 'orientacao') continue;
+        if (!validarCampoObrigatorio(campo)) return;
+      }
+
+      const powerMeterVal = validarPowerMeter(document.getElementById('powerMeter').value);
+      if (powerMeterVal === null) return;
+
+      if (document.getElementById('observacoes').value.trim() === "") {
+        document.getElementById('observacoes').value = "N/A";
+        autoResize(document.getElementById('observacoes'));
+      }
+      if (document.getElementById('orientacao').value.trim() === "") {
+        document.getElementById('orientacao').value = "N/A";
+        autoResize(document.getElementById('orientacao'));
+      }
+
+      salvarLocal();
+
+      const agora = new Date();
+      const idSpeedTest = extrairIdSpeedtest(document.getElementById('speedTest').value);
+
+      // Montagem do texto atualizada para o novo formato
+      const texto = `RELATÓRIO DE REPARO
+
+;DATA HORA: ${agora.toLocaleString()};
+O que causou o defeito: ${valorOuNA(document.getElementById('causa').value)};
+O que foi feito para corrigir: ${valorOuNA(document.getElementById('corrigir').value)};
+Orientação ao cliente: ${valorOuNA(document.getElementById('orientacao').value)};
+Código do Mapa de Calor: ${valorOuNA(document.getElementById('mapaCalor').value)};
+ID do Speed Test: ${idSpeedTest};
+Potência Fibra PowerMeter: ${powerMeterVal};
+OBSERVAÇÕES: ${valorOuNA(document.getElementById('observacoes').value)};
+`;
+      output.textContent = texto;
+      copy.style.display = 'block';
+    };
+
+    copy.onclick = function () {
+      navigator.clipboard.writeText(output.textContent).then(() => {
+        if (window.Telegram?.WebApp) window.Telegram.WebApp.showAlert('Relatório copiado!');
+        else alert('Relatório copiado!');
+      });
+    };
+
+    borrar.onclick = function () {
+      campos.forEach(campo => {
+        campo.value = "";
+        autoResize(campo);
+      });
+      localStorage.removeItem('carimbo_reparo');
+      output.textContent = "";
+      copy.style.display = 'none';
+    };
+  </script>
+</body>
+</html>
